@@ -1,0 +1,131 @@
+init module {
+	knowledge{
+		% We are at a certain location if the IDs match, or ...
+		at(UnrealID) :- navigation(reached, UnrealID).
+		% if the coordinates are approximately equal.
+		at(location(X, Y, Z)) :- navigation(reached, location(X1, Y1, Z1)), 
+			round(X) =:= round(X1), round(Y) =:= round(Y1), round(Z) =:= round(Z1).
+	}
+	beliefs
+	{
+		% Initially, we are going nowhere.
+		navigation(none, none).
+	}
+	program{
+		% Save our initial location as our starting point.
+		if bel( percept(orientation(Location, _, _)) ) then insert( target(Location) ).
+		% Take a random navpoint as our target; note that it might not be reachable though.
+		if bel( percept(navPoint(UnrealID, _, _))) then insert( target(UnrealID) ).
+		
+		% Initial believe
+		if bel(percept(self(UID, Name, Team))) then insert(self(UID, Name, Team)).
+		
+		%% 7.3 %%
+		
+		% Navpoint percept
+		if bel(percept( navPoint(UID, Position, Neighbours))) then insert(navPoint(UID, Position, Neighbours)).
+		
+		% Item Pickup percept
+		if bel(percept( pickup(UID, Label, ItemType))) then insert(pickup(UID, Label, ItemType)).
+		
+		
+	}
+	actionspec{
+		% Make a best effort attempt to navigate to a certain location on the map.
+		navigate(Destination) {
+			pre{ not(navigation(navigating, _)) }
+			post{ true }
+		}
+	}
+}
+
+main module {
+	program{
+		% Try to go to our destination if we want to be there.
+		if goal( at(Destination) ) then navigate(Destination).
+	}
+}
+
+event module {
+	program {	
+		% Update the navigation state of the bot ('send on change' percept).
+		forall bel( navigation(OldStatus, OldDest),  percept(navigation(Status, Destination)) )
+			do delete( navigation(OldStatus, OldDest) ) + insert( navigation(Status, Destination) ).
+
+		% If the current goal has been reached, pick a new goal.			
+		if not( goal( at(_) ) ), bel( target(Destination) ) then adopt( at(Destination) ).
+		
+		%% 7.1 percepts %%
+		
+		% Current Orientation
+		if bel ( percept( not( orientation(Location,Rotation,Velocity ) ) ) ) then delete( orientation(Location,Rotation,Velocity) ).
+		if bel ( percept( orientation(Location,Rotation,Velocity) ) ) then insert( orientation(Location,Rotation,Velocity) ).
+		
+		% Current Status
+		if bel ( percept( not( status(Health, Armour, Adrenaline, Combo ) ) ) ) then delete( status( Health, Armour, Adrenaline, Combo ) ).
+		if bel ( percept( status( Health, Armour, Adrenaline, Combo ) ) ) then insert( status( Health, Armour, Adrenaline, Combo ) ).
+		
+		% Current Score
+		if bel ( percept( not( score(Kills, Deaths, Score) ) ) ) then delete( score(Kills, Deaths, Score)).
+		if bel ( percept( score(Kills, Deaths, Score))) then insert( score(Kills, Deaths, Score)).
+		
+		% Current Weapon Percept
+		if bel ( percept( not( currentWeapon(WeaponType, FireMode) ) ) ) then delete(currentWeapon(WeaponType, FireMode)).
+		if bel ( percept( currentWeapon(WeaponType, FireMode))) then insert(currentWeapon(WeaponType, FireMode)).
+		
+		% Inventory Weapon Percept
+		if bel ( percept( not( weapon(WeaponType, Ammo, AltAmmo)))) then delete(weapon(WeaponType, Ammo, AltAmmo)).
+		if bel ( percept( weapon(WeaponType, Ammo, AltAmmo))) then insert(weapon(WeaponType, Ammo, AltAmmo)).
+		
+		% Powerup percept UT3
+		if bel ( percept( not( powerup(Type, Duration)))) then delete(powerup(Type, Duration)).
+		if bel ( percept( powerup(Type, Duration))) then insert(powerup(Type, Duration)).
+		
+		% Armor Percept in UT3
+		if bel ( percept( not( armor(Helmet, Vest, Tighpad, ShieldBelt)))) then delete(armor(Helmet,Vest,Tighpad,ShieldBelt)).
+		if bel ( percept( armor(Helmet, Vest, Tighpad, ShieldBelt))) then insert(armor(Helmet, Vest, Tighpad, ShieldBelt)).
+		
+		%% 7.2 percepts %%
+		
+		% Frag Percept
+		if bel ( percept( fragged(Time, Killer, Victim, WeaponType))) then insert(fragged(Time,Killer,Victim,WeaponType)).
+		
+		% Navigational Stae
+		if bel ( percept( not(navigation(State,Destination)))) then delete(navigation(State,Destination)).
+		if bel ( percept( navigation(State, Destination))) then insert(navigaion(State, Destination)).
+		
+		% Path Percept
+		if bel ( percept( not(path(Start, End, Length, Location)))) then delete(path(Start,End,Length,Location)).
+		if bel ( percept( path(Start,End,Length, Location))) then insert(path(Start,End,Length,Location)).
+		
+		% Logic Iteration percept
+		if bel ( percept( not(logic(Iterations)))) then delete(logic(Iterations)).
+		if bel ( percept( logic(Iterations))) then insert(logic(Iterations)).
+		
+		%% 7.3 percepts %%
+		
+		% Game info percept
+		if bel ( percept( not(game(GameType, Map, GoalScore, TimeLimit)))) then delete(game(GameType, Map, GoalScore, TimeLimit)).
+		if bel ( percept( game(GameType, Map, GoalScore, TimeLimit))) then insert(game(GameType, Map, GoalScore, TimeLimit)).
+		
+		% Team score percept
+		if bel ( percept( not(teamScore(TeamScore, OpponentTeamScore)))) then delete(teamScore(TeamScore, OpponentTeamScore)).
+		if bel ( percept(teamScore(TeamScore, OpponentTeamScore))) then insert(teamScore(TeamScore, OpponentTeamScore)).
+		
+		% 7.4 See percepts
+		if bel ( percept( not(item(UID, Label, Pos)))) then delete(item(UID, Label, Pos)).
+		if bel ( percept(item(UID, Label, Pos))) then insert(item(UID, Label, Pos)).
+		
+		% See other bot
+		if bel ( percept( not(bot(UID, Name, Team, Pos, Weap, FireMode)))) then delete(bot(UID, Name, Team, Pos, Weap, FireMode)).
+		if bel ( percept( bot(UID, Name, Team, Pos, Weap, FireMode))) then insert(bot(UID, Name, Team, Pos, Weap, FireMode)).
+		
+		% See pickup percept
+		if bel ( percept( not(pickup(UID)))) then delete(pickup(UID)).
+		if bel ( percept( pickup(UID))) then insert(pickup(UID)).
+		
+		% See slow volume
+		if bel ( percept( not(slowVolume(UID)))) then delete(slowVolume(UID)).
+		if bel ( percept( slowVolume(UID))) then insert(slowVolume(UID)).
+	}
+}
