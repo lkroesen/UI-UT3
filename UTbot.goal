@@ -20,15 +20,11 @@ init module {
 		% Initial believe
 		if bel(percept(self(UID, Name, Team))) then insert(self(UID, Name, Team)).
 		
-		%% 7.3 %%
+		forall bel(percept ( navPoint(UID, Position, Neighbours))) do insert(navPoint(UID, Position, Neighbours)).
+		forall bel(percept( pickup(UID, Label, ItemType))) do insert(pickup(UID, Label, ItemType)).
 		
-		% Navpoint percept
-		if bel(percept( navPoint(UID, Position, Neighbours))) then insert(navPoint(UID, Position, Neighbours)).
-		
-		% Item Pickup percept
-		if bel(percept( pickup(UID, Label, ItemType))) then insert(pickup(UID, Label, ItemType)).
-		
-		
+		%Visit every place once, after that we know everything this map has to offer.
+		%forall bel(navPoint(Name,_,_)) do adopt(at(Name)).
 	}
 	actionspec{
 		% Make a best effort attempt to navigate to a certain location on the map.
@@ -41,7 +37,9 @@ init module {
 
 main module {
 	program{
-		% Try to go to our destination if we want to be there.
+		%High priority
+		if goal( go(Item)) then navigate(Item).
+		%Low priority
 		if goal( at(Destination) ) then navigate(Destination).
 	}
 }
@@ -53,13 +51,19 @@ event module {
 			do delete( navigation(OldStatus, OldDest) ) + insert( navigation(Status, Destination) ).
 
 		% If the current goal has been reached, pick a new goal.			
-		if not( goal( at(_) ) ), bel( target(Destination) ) then adopt( at(Destination) ).
+		%if not( goal( at(_) ) ), bel( target(Destination), not(visited(Destination)) ) then adopt( at(Destination) ) + insert(visited(Destination)).
+		
+		%If while navigating we come across an item, we want it!
+		%if bel(navigation(navigating, Item)), goal(at(Place)) then drop(at(Place)) + adopt(go(Item)).
+		
+		if bel(pickup(UID,Label,rocket_launcher)) then adopt(go(UID)).
+
 		
 		%% 7.1 percepts %%
 		
 		% Current Orientation
-		if bel ( percept( not( orientation(Location,Rotation,Velocity ) ) ) ) then delete( orientation(Location,Rotation,Velocity) ).
-		if bel ( percept( orientation(Location,Rotation,Velocity) ) ) then insert( orientation(Location,Rotation,Velocity) ).
+		%if bel ( percept( not( orientation(Location,Rotation,Velocity ) ) ) ) then delete( orientation(Location,Rotation,Velocity) ).
+		%if bel ( percept( orientation(Location,Rotation,Velocity) ) ) then insert( orientation(Location,Rotation,Velocity) ).
 		
 		% Current Status
 		if bel ( percept( not( status(Health, Armour, Adrenaline, Combo ) ) ) ) then delete( status( Health, Armour, Adrenaline, Combo ) ).
@@ -92,25 +96,11 @@ event module {
 		
 		% Navigational Stae
 		if bel ( percept( not(navigation(State,Destination)))) then delete(navigation(State,Destination)).
-		if bel ( percept( navigation(State, Destination))) then insert(navigaion(State, Destination)).
+		if bel ( percept( navigation(State, Destination))) then insert(navigation(State, Destination)).
 		
 		% Path Percept
 		if bel ( percept( not(path(Start, End, Length, Location)))) then delete(path(Start,End,Length,Location)).
 		if bel ( percept( path(Start,End,Length, Location))) then insert(path(Start,End,Length,Location)).
-		
-		% Logic Iteration percept
-		if bel ( percept( not(logic(Iterations)))) then delete(logic(Iterations)).
-		if bel ( percept( logic(Iterations))) then insert(logic(Iterations)).
-		
-		%% 7.3 percepts %%
-		
-		% Game info percept
-		if bel ( percept( not(game(GameType, Map, GoalScore, TimeLimit)))) then delete(game(GameType, Map, GoalScore, TimeLimit)).
-		if bel ( percept( game(GameType, Map, GoalScore, TimeLimit))) then insert(game(GameType, Map, GoalScore, TimeLimit)).
-		
-		% Team score percept
-		if bel ( percept( not(teamScore(TeamScore, OpponentTeamScore)))) then delete(teamScore(TeamScore, OpponentTeamScore)).
-		if bel ( percept(teamScore(TeamScore, OpponentTeamScore))) then insert(teamScore(TeamScore, OpponentTeamScore)).
 		
 		% 7.4 See percepts
 		if bel ( percept( not(item(UID, Label, Pos)))) then delete(item(UID, Label, Pos)).
@@ -127,5 +117,11 @@ event module {
 		% See slow volume
 		if bel ( percept( not(slowVolume(UID)))) then delete(slowVolume(UID)).
 		if bel ( percept( slowVolume(UID))) then insert(slowVolume(UID)).
+		
+		% Navpoint percept
+		%if bel(percept( navPoint(UID, Position, Neighbours))) then insert(navPoint(UID, Position, Neighbours)).
+		
+		% Item Pickup percept
+		%if bel(percept( pickup(UID, Label, ItemType))) then insert(pickup(UID, Label, ItemType)).
 	}
 }
