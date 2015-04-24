@@ -32,11 +32,19 @@ init module {
 			pre{ not(navigation(navigating, _)) }
 			post{ true }
 		}
+		stop{
+			pre{true}
+			post{true}
+		}
 	}
 }
 
 main module {
 	program{
+		%Kill priority
+		%if goal( killAt(Place)) then navigate(Place)
+		%Epic Priority
+		if goal( epic(Place)) then navigate(Place).
 		%High priority
 		if goal( go(Item)) then navigate(Item).
 		% Med priority
@@ -62,34 +70,50 @@ event module {
 		% If on a node close there's something of interest pick it up.
 		forall bel( at(UID), navPoint(UID,_,List), pickup(U,armor,_), member(U,List) ) do adopt(be(U)).
 		forall bel( at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List) ) do adopt(be(U)).
-		forall bel( at(UID), navPoint(UID,_,List), pickup(U,weapon,_), member(U,List) ) do adopt(at(U)).
+		forall bel( at(UID), navPoint(UID,_,List), pickup(U,weapon,_), member(U,List) ) do adopt(at(U)).	
 		
-		% Seeing other bots
-		%if bel(percept(bot(UID,_,_,Position,Weapon,_))) then insert(kill(UID)).
 		
-		% Kill steal
-		%if bel(kill(UID), fragged(_,_,UID,_)) then delete(kill(UID)).
+		if bel(percept(pickup(UID,armor,_)), percept(item(UID,_,_))) then adopt(epic(UID)) + stop.
 		
+		
+		% If you're low on health go pick up some'
+		if bel(percept(status(Health,_,_,_)), Health < 70) then insert(find(health)).
+		
+		% Armor handling, if we're low on something, we want to find it.
+		% As long as we know there's a navpoint with the item...
+		%if bel(percept(armor(V,_,_,_)), V < 19, navPoint(UID,_,_),   pickup(UID,_,armor_helmet), item(UID,_,_) ) then adopt(go(UID)).
+		%if bel(percept(armor(_,V,_,_)), V < 49, navPoint(UID,_,_),   pickup(UID,_,armor_vest), item(UID,_,_) ) then adopt(go(UID)).
+		%if bel(percept(armor(_,_,V,_)), V < 29, navPoint(UID,_,_),   pickup(UID,_,armor_thighpads), item(UID,_,_) ) then adopt(be(UID)).
+		%if bel(percept(armor(_,_,_,V)), V < 99, navPoint(UID,_,_),   pickup(UID,_,armor_shield_belt), item(UID,_,_) ) then adopt(kill(UID)).
+		
+		
+		% If you see the shieldbelt, IMMIDIATELLY GRAB IT
+		%if bel( item(UID,armor,shield_belt))
+		
+		% Find handling
+		if bel( find(health), at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List), item(U,_,_) ) then adopt(epic(U)) + delete(be(U),go(U),at(U)).
+		if bel( find(armour), at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List), item(U,_,_) ) then adopt(epic(U)) + delete(be(U),go(U),at(U)).
+		
+		
+		
+		
+		% If we do not have a shock rifle, we have to go grab one quickly.
+		%if bel(percept(not(currentWeapon(shock_rifle,_)))) then insert(find(shock_rifle)).
+		%if bel( at(UID), navPoint(UID,_,List), pickup(U,weapon,Weapon), member(U,List), find(Weapon) ) then adopt(epic(U)).
+		% If we have a shock_rifle then don't try to find one.
+		%forall bel(percept(currentWeapon(shock_rifle,_))) do delete(find(shock_rifle)).
+		
+		% Avoid Other bots if they have a better weapon
+		
+		% Believe to attack a bot if we see it
+		if bel(percept(bot(UID,_,_,Position,_,_))) then insert(kill(UID)).
+		
+		% If a bot gets fragged remove the intent to kill it
+		if bel(percept(fragged(_,_,UID,_))) then delete(kill(UID)).
 		
 		
 		%if bel(pickup(UID,armor,_)) then adopt(at(UID)).
-		
-		% 3 weapons that are interesting.
-		
-		% Pickup the minigun
-		%if bel(pickup(UID,weapon,stinger)) then adopt(go(UID)).
-		% Pickup minigun ammo
-		%if bel(pickup(UID,ammo,stinger)) then adopt(go(UID)).
-		
-		% Pickup the Rocket Launcher
-		%if bel(pickup(UID,weapon,rocket_launcher)) then adopt(at(UID)).
-		% Pickup RocketLauncher Ammo
-		%if bel(pickup(UID,ammo,rocket_launcher)) then adopt(go(UID)).
 
-		% Pickup the shock rifle
-		%if bel(pickup(UID,weapon,shock_rifle)) then adopt(go(UID)).
-		% Pickup sniper rifle ammo
-		%if bel(pickup(UID,ammo,shock_rifle)) then adopt(go(UID)).
 
 
 		
@@ -120,8 +144,8 @@ event module {
 		if bel ( percept( powerup(Type, Duration))) then insert(powerup(Type, Duration)).
 		
 		% Armor Percept in UT3
-		if bel ( percept( not( armor(Helmet, Vest, Tighpad, ShieldBelt)))) then delete(armor(Helmet,Vest,Tighpad,ShieldBelt)).
-		if bel ( percept( armor(Helmet, Vest, Tighpad, ShieldBelt))) then insert(armor(Helmet, Vest, Tighpad, ShieldBelt)).
+		%if bel ( percept( not( armor(Helmet, Vest, Tighpad, ShieldBelt)))) then delete(armor(Helmet,Vest,Tighpad,ShieldBelt)).
+		%if bel ( percept( armor(Helmet, Vest, Tighpad, ShieldBelt))) then insert(armor(Helmet, Vest, Tighpad, ShieldBelt)).
 		
 		%% 7.2 percepts %%
 		
