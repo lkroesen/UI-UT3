@@ -12,8 +12,21 @@ environment {
 					["skin", "BotA"], 
 					%["team", "red"],
 					["logLevel", "WARNING"]
+				],
+				[
+				 	["name", "Bot 2"],
+					["skill", 5],
+					["skin", "BotA"], 
+					%["team", "red"],
+					["logLevel", "WARNING"]
+				],
+				[
+				 	["name", "Bot 3"],
+					["skill", 5],
+					["skin", "BotA"], 
+					%["team", "red"],
+					["logLevel", "WARNING"]
 				]
-				
 			]
 	].
 }
@@ -23,6 +36,6 @@ agentfiles {
 }
 
 launchpolicy {
-    when [type=bot,max=1]@env do launch *:bot.
+    when [type=bot,max=3]@env do launch *:bot.
 }
 
