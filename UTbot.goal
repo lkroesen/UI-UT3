@@ -23,6 +23,27 @@ init module {
 		forall bel(percept ( navPoint(UID, Position, Neighbours))) do insert(navPoint(UID, Position, Neighbours)).
 		forall bel(percept( pickup(UID, Label, ItemType))) do insert(pickup(UID, Label, ItemType)).
 		
+		% Initial armor percept
+		if bel(percept(armor(A,B,C,D))) then insert(armor(A,B,C,D)).
+		
+		% Initial orientation
+		if bel(percept(orientation(Location, Rotation, Velocity))) then insert(orientation(Location, Rotation, Velocity)).
+
+		% Initial Status
+		if bel(percept(status( Health, Armour, Adrenaline, Combo ))) then insert(status( Health, Armour, Adrenaline, Combo )).
+		
+		% Initial Score
+		if bel(percept(score(Kills, Deaths, Score))) then insert(score(Kills, Deaths, Score)).
+		
+		% Initial Powerup
+		if bel(percept(powerup(Type, Duration))) then insert(powerup(Type, Duration)).
+		
+		% Initial Current Weapon
+		if bel(percept(currentWeapon(WeaponType, FireMode))) then insert(currentWeapon(WeaponType, FireMode)).
+		
+		% Initial Game Percept
+		if bel(percept(game(Gametype, Map, GoalScore,TimeLimit))) then insert(game(Gametype, Map, GoalScore,TimeLimit)).
+		
 		%Visit every place once, after that we know everything this map has to offer.
 		forall bel(navPoint(Name,_,_)) do adopt(go(Name)).
 	}
@@ -36,17 +57,27 @@ init module {
 			pre{true}
 			post{true}
 		}
+		look(Target)
+		{
+			pre{percept(bot(Target,_,_,Position,_,_))}
+			post{true}
+		}
+		shoot(Target)
+		{
+			pre{percept(bot(Target,_,_,Position))}
+			post{true}
+		}
 	}
 }
 
 main module {
 	program{
-		%Kill priority
-		%if goal( killAt(Place)) then navigate(Place)
 		%Epic Priority
-		if goal( epic(Place)) then navigate(Place).
+		if goal( epic(Place))  then navigate(Place).
 		%High priority
 		if goal( go(Item)) then navigate(Item).
+		
+		if goal(kill(UID)) then navigate(UID) + shoot(UID).
 		% Med priority
 		if goal( be(At)) then navigate(At).
 		%Low priority
@@ -63,15 +94,12 @@ event module {
 		% If the current goal has been reached, pick a new goal.			
 		%if not( goal( at(_) ) ), bel( target(Destination), not(visited(Destination)) ) then adopt( at(Destination) ) + insert(visited(Destination)).
 		
-		%If while navigating we come across an item, we want it!
-		%if bel(navigation(navigating, Item)), goal(at(Place)) then drop(at(Place)) + adopt(go(Item)).
-		
-		
 		% If on a node close there's something of interest pick it up.
 		forall bel( at(UID), navPoint(UID,_,List), pickup(U,armor,_), member(U,List) ) do adopt(be(U)).
 		forall bel( at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List) ) do adopt(be(U)).
 		forall bel( at(UID), navPoint(UID,_,List), pickup(U,weapon,_), member(U,List) ) do adopt(at(U)).	
 		
+		if bel(percept(navigation(reached,UID))) then insert(at(UID)).
 		
 		if bel(percept(pickup(UID,armor,_)), percept(item(UID,_,_))) then adopt(epic(UID)) + stop.
 		
@@ -81,36 +109,36 @@ event module {
 		
 		% Armor handling, if we're low on something, we want to find it.
 		% As long as we know there's a navpoint with the item...
-		%if bel(percept(armor(V,_,_,_)), V < 19, navPoint(UID,_,_),   pickup(UID,_,armor_helmet), item(UID,_,_) ) then adopt(go(UID)).
-		%if bel(percept(armor(_,V,_,_)), V < 49, navPoint(UID,_,_),   pickup(UID,_,armor_vest), item(UID,_,_) ) then adopt(go(UID)).
-		%if bel(percept(armor(_,_,V,_)), V < 29, navPoint(UID,_,_),   pickup(UID,_,armor_thighpads), item(UID,_,_) ) then adopt(be(UID)).
-		%if bel(percept(armor(_,_,_,V)), V < 99, navPoint(UID,_,_),   pickup(UID,_,armor_shield_belt), item(UID,_,_) ) then adopt(kill(UID)).
-		
-		
-		% If you see the shieldbelt, IMMIDIATELLY GRAB IT
-		%if bel( item(UID,armor,shield_belt))
+		if bel(percept(armor(V,_,_,_)), V < 19, navPoint(UID,_,_),   pickup(UID,_,armor_helmet), item(UID,_,_) ) then adopt(epic(UID)).
+		if bel(percept(armor(_,V,_,_)), V < 49, navPoint(UID,_,_),   pickup(UID,_,armor_vest), item(UID,_,_) ) then adopt(go(UID)).
+		if bel(percept(armor(_,_,V,_)), V < 29, navPoint(UID,_,_),   pickup(UID,_,armor_thighpads), item(UID,_,_) ) then adopt(be(UID)).
+		if bel(percept(armor(_,_,_,V)), V < 99, navPoint(UID,_,_),   pickup(UID,_,armor_shield_belt), item(UID,_,_) ) then adopt(kill(UID)).
 		
 		% Find handling
-		if bel( find(health), at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List), item(U,_,_) ) then adopt(epic(U)) + delete(be(U),go(U),at(U)).
-		if bel( find(armour), at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List), item(U,_,_) ) then adopt(epic(U)) + delete(be(U),go(U),at(U)).
-		
-		
+		%if bel( find(health), at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List), item(U,_,_) ) then stop + adopt(epic(U)) + delete(be(U),go(U),at(U)).
+		%if bel( find(armour), at(UID), navPoint(UID,_,List), pickup(U,health,_), member(U,List), item(U,_,_) ) then stop + adopt(epic(U)) + delete(be(U),go(U),at(U)).
 		
 		
 		% If we do not have a shock rifle, we have to go grab one quickly.
-		%if bel(percept(not(currentWeapon(shock_rifle,_)))) then insert(find(shock_rifle)).
-		%if bel( at(UID), navPoint(UID,_,List), pickup(U,weapon,Weapon), member(U,List), find(Weapon) ) then adopt(epic(U)).
+		if bel(percept(not(currentWeapon(shock_rifle,_)))) then insert(find(shock_rifle)).
+		% If there's a weapon in our route, grab it.
+		if bel( at(UID), navPoint(UID,_,List), pickup(U,weapon,Weapon), member(U,List), find(Weapon) ) then adopt(epic(U)).
 		% If we have a shock_rifle then don't try to find one.
-		%forall bel(percept(currentWeapon(shock_rifle,_))) do delete(find(shock_rifle)).
+		forall bel(percept(currentWeapon(shock_rifle,_))) do delete(find(shock_rifle)).
 		
 		% Avoid Other bots if they have a better weapon
 		
 		% Believe to attack a bot if we see it
-		if bel(percept(bot(UID,_,_,Position,_,_))) then insert(kill(UID)).
+		if bel(percept(bot(UID,_,_,Position,Weapon,_)), not(Weapon = none)) then adopt(kill(UID)) + insert(look(UID)) + stop.
+		
+		if bel(look(UID)) then shoot(UID).
+		
+		forall bel(percept(not(bot(UID,_,_,Position,_,_)))) do drop(kill(UID)) + delete(look(UID)).
 		
 		% If a bot gets fragged remove the intent to kill it
-		if bel(percept(fragged(_,_,UID,_))) then delete(kill(UID)).
-		
+		forall bel(percept(fragged(_,_,UID,_))) do drop(kill(UID)) + delete(look(UID)).
+		% If the bot self gets fragged, also remove intent to kill any bots tagged as kill.
+		forall bel(percept(fragged(_,Self,_,_)), self(Self,_,_)), goal(kill(UID)) do drop(kill(UID)) + delete(look(UID)).
 		
 		%if bel(pickup(UID,armor,_)) then adopt(at(UID)).
 
@@ -118,35 +146,35 @@ event module {
 
 		
 		%% 7.1 percepts %%
-		
-		% Current Orientation
-		%if bel ( percept( not( orientation(Location,Rotation,Velocity ) ) ) ) then delete( orientation(Location,Rotation,Velocity) ).
-		%if bel ( percept( orientation(Location,Rotation,Velocity) ) ) then insert( orientation(Location,Rotation,Velocity) ).
-		
+		% Oreintation, send on change
+		forall bel( orientation(Location, Rotation, Velocity),  percept(orientation(NLocation, NRotation, NVelocity) ) )
+			do delete( orientation(Location, Rotation, Velocity) ) + insert( orientation(NLocation, NRotation, NVelocity) ).
+			
 		% Current Status
-		if bel ( percept( not( status(Health, Armour, Adrenaline, Combo ) ) ) ) then delete( status( Health, Armour, Adrenaline, Combo ) ).
-		if bel ( percept( status( Health, Armour, Adrenaline, Combo ) ) ) then insert( status( Health, Armour, Adrenaline, Combo ) ).
+		forall bel( status( Health, Armour, Adrenaline, Combo ),  percept(status( AHealth, AArmour, AAdrenaline, ACombo ) ) )
+			do delete( status( Health, Armour, Adrenaline, Combo ) ) + insert(status( AHealth, AArmour, AAdrenaline, ACombo ) ).
 		
 		% Current Score
-		if bel ( percept( not( score(Kills, Deaths, Score) ) ) ) then delete( score(Kills, Deaths, Score)).
-		if bel ( percept( score(Kills, Deaths, Score))) then insert( score(Kills, Deaths, Score)).
+		forall bel( score(Kills, Deaths, Score),  percept( score(NKills, NDeaths, NScore) ) )
+			do delete( score(Kills, Deaths, Score) ) + insert( score(NKills, NDeaths, NScore) ).
 		
 		% Current Weapon Percept
-		if bel ( percept( not( currentWeapon(WeaponType, FireMode) ) ) ) then delete(currentWeapon(WeaponType, FireMode)).
-		if bel ( percept( currentWeapon(WeaponType, FireMode))) then insert(currentWeapon(WeaponType, FireMode)).
+		forall bel( currentWeapon(WeaponType, FireMode),  percept( currentWeapon(WeaponTypen, FireModen) ) )
+			do delete( currentWeapon(WeaponType, FireMode) ) + insert( currentWeapon(WeaponTypen, FireModen) ).
 		
 		% Inventory Weapon Percept
 		if bel ( percept( not( weapon(WeaponType, Ammo, AltAmmo)))) then delete(weapon(WeaponType, Ammo, AltAmmo)).
 		if bel ( percept( weapon(WeaponType, Ammo, AltAmmo))) then insert(weapon(WeaponType, Ammo, AltAmmo)).
 		
 		% Powerup percept UT3
-		if bel ( percept( not( powerup(Type, Duration)))) then delete(powerup(Type, Duration)).
-		if bel ( percept( powerup(Type, Duration))) then insert(powerup(Type, Duration)).
+		forall bel( powerup(Type, Duration),  percept( powerup(Typem, Durationm) ) )
+			do delete( powerup(Type, Duration) ) + insert( powerup(Typem, Durationm) ).
+
 		
 		% Armor Percept in UT3
-		%if bel ( percept( not( armor(Helmet, Vest, Tighpad, ShieldBelt)))) then delete(armor(Helmet,Vest,Tighpad,ShieldBelt)).
-		%if bel ( percept( armor(Helmet, Vest, Tighpad, ShieldBelt))) then insert(armor(Helmet, Vest, Tighpad, ShieldBelt)).
-		
+		forall bel( armor(A, B, C, D),  percept(armor(E, F, G, H)) )
+			do delete( armor(A, B, C, D) ) + insert( armor(E, F, G, H) ).
+			
 		%% 7.2 percepts %%
 		
 		% Frag Percept
@@ -168,16 +196,21 @@ event module {
 		if bel ( percept( not(bot(UID, Name, Team, Pos, Weap, FireMode)))) then delete(bot(UID, Name, Team, Pos, Weap, FireMode)).
 		if bel ( percept( bot(UID, Name, Team, Pos, Weap, FireMode))) then insert(bot(UID, Name, Team, Pos, Weap, FireMode)).
 		
-		% See pickup percept
-		if bel ( percept( not(pickup(UID)))) then delete(pickup(UID)).
-		if bel ( percept( pickup(UID))) then insert(pickup(UID)).
-		
 		% See slow volume
 		if bel ( percept( not(slowVolume(UID)))) then delete(slowVolume(UID)).
 		if bel ( percept( slowVolume(UID))) then insert(slowVolume(UID)).
 		
-		% Navpoint percept
-		%if bel(percept( navPoint(UID, Position, Neighbours))) then insert(navPoint(UID, Position, Neighbours)).
+		% Game percept
+		forall bel( game(Gametype, Map, GoalScore,TimeLimit),  percept( game(Gametypen, Mapn, GoalScoren,TimeLimitn) ) )
+			do delete( game(Gametype, Map, GoalScore,TimeLimit) ) + insert( game(Gametypen, Mapn, GoalScoren,TimeLimitn) ).
+		
+		% Pickup percept
+		if bel( percept(not(pickup(UID)))) then delete(pickup(UID)).
+		if bel(percept(pickup(UID))) then insert(pickup(UID)).
+		
+		% Slow volume
+		if bel( percept(not(slowVolume(UID)))) then delete(slowVolume(UID)).
+		if bel(percept(slowVolume(UID))) then insert(slowVolume(UID)).
 		
 		% Item Pickup percept
 		%if bel(percept( pickup(UID, Label, ItemType))) then insert(pickup(UID, Label, ItemType)).
